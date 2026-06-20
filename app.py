@@ -1,8 +1,15 @@
 import streamlit as st
 import json
 from datetime import datetime
+
+# Core imports
 from core.preprocessor import preprocess_prompt
 from core.parser import parse_sections
+from core.ir_generator import generate_prompt_ir
+from core.constraint_locker import lock_constraints
+from core.compression_planner import plan_compression
+from core.compressor import compress_prompt
+from core.reconstructor import reconstruct_prompt
 
 # ==============================================================================
 # Page Configuration
@@ -15,7 +22,7 @@ st.set_page_config(
 )
 
 # ==============================================================================
-# Session State Initialization (MUST be at the top)
+# Session State Initialization
 # ==============================================================================
 if "raw_prompt_input" not in st.session_state:
     st.session_state.raw_prompt_input = ""
@@ -24,7 +31,6 @@ if "raw_prompt_input" not in st.session_state:
 # Callback Functions
 # ==============================================================================
 def load_sample_prompt():
-    """Safely updates the session state before the widget renders."""
     st.session_state.raw_prompt_input = SAMPLE_PROMPT
 
 # ==============================================================================
@@ -34,18 +40,17 @@ with st.sidebar:
     st.header("⚒️ PromptForge Pipeline")
     st.markdown("""
     1. **Raw Prompt Input**
-    2. **Prompt Preprocessor** *(Day 2 - ACTIVE)*
-    3. **Section Parser** *(Day 3 - ACTIVE)*
+    2. **Prompt Preprocessor** *(Day 2)*
+    3. **Section Parser** *(Day 3)*
     4. **Prompt IR Generator** *(Day 4)*
-    5. **Constraint Locker** *(Day 5)*
-    6. **Compression Planner & Engine** *(Day 5)*
-    7. **Prompt Reconstructor** *(Day 5)*
-    8. **Multi-Metric Evaluator** *(Day 6)*
-    9. **Adaptive Repair** *(Day 6)*
-    10. **Final Output + Report** *(Day 7)*
+    5. **Constraint Locker & Compressor** *(Day 5 - ACTIVE)*
+    6. **Prompt Reconstructor** *(Day 5 - ACTIVE)*
+    7. **Multi-Metric Evaluator** *(Day 6)*
+    8. **Adaptive Repair** *(Day 6)*
+    9. **Final Output + Report** *(Day 7)*
     """)
     st.divider()
-    st.caption("v0.3.0 (Day 3 Section Parser)\nLocal-first, 8GB RAM friendly, No paid APIs.")
+    st.caption("v0.5.0 (Day 5 Compressor)\nLocal-first, 8GB RAM friendly, No paid APIs.")
 
 # ==============================================================================
 # Main UI: Header & Description
@@ -59,7 +64,7 @@ Transform messy prompts into short, safe, and optimized prompts while strictly p
 # ==============================================================================
 # Sample Prompt Data
 # ==============================================================================
-SAMPLE_PROMPT = """You are an expert Python developer. I need you to write a script that scrapes data from a website. 
+SAMPLE_PROMPT = """You are an expert Python developer. I want you to write a script that scrapes data from a website. 
 Important constraints: 
 - Do not use any paid APIs. 
 - The script must run offline after initial download, or use only free libraries. 
@@ -73,7 +78,7 @@ Features required:
 - Multi-metric evaluation
 - Local LLM support via Ollama
 
-Please provide the code and a brief explanation. Make sure to use Python and no cloud dependency."""
+Please provide the code and a brief explanation. Make sure to use Python and no cloud dependency. Make sure that the code is clean. Make sure that the code is clean."""
 
 # ==============================================================================
 # Input Section
@@ -82,7 +87,6 @@ st.subheader("1. Input Prompt")
 
 col1, col2 = st.columns([3, 1])
 with col1:
-    # Bind value to session state, and use the key
     raw_prompt = st.text_area(
         "Paste your raw, messy prompt here:",
         value=st.session_state.raw_prompt_input,
@@ -91,19 +95,14 @@ with col1:
         key="raw_prompt_input"
     )
 with col2:
-    st.write("") # Spacer
-    st.write("") # Spacer
-    # Use on_click callback to safely update session state
-    st.button(
-        "📋 Load Sample Prompt", 
-        use_container_width=True, 
-        on_click=load_sample_prompt
-    )
+    st.write("") 
+    st.write("") 
+    st.button("📋 Load Sample Prompt", use_container_width=True, on_click=load_sample_prompt)
 
 compression_mode = st.selectbox(
     "2. Select Compression Mode",
     options=["Safe", "Balanced", "Aggressive", "Research"],
-    help="Safe: Minimal changes, max preservation. Balanced: Good reduction, strict constraint lock. Aggressive: Max token reduction, high compression on context/examples. Research: Optimized for technical/academic prompts."
+    help="Safe: Minimal changes. Balanced: Good reduction. Aggressive: Max reduction. Research: Optimized for technical prompts."
 )
 
 # ==============================================================================
@@ -117,76 +116,75 @@ optimize_clicked = st.button("🚀 Optimize Prompt", type="primary", use_contain
 # ==============================================================================
 if optimize_clicked:
     if not raw_prompt.strip():
-        st.warning("️ Please enter a prompt or load the sample prompt first.")
+        st.warning("⚠️ Please enter a prompt or load the sample prompt first.")
     else:
-        # --- DAY 2: PREPROCESSING ---
+        # --- PIPELINE EXECUTION ---
         with st.spinner("Running Prompt Preprocessor..."):
             preprocessed_data = preprocess_prompt(raw_prompt)
         
-        # --- DAY 3: SECTION PARSING ---
         with st.spinner("Running Section Parser..."):
             parsed_data = parse_sections(preprocessed_data)
+            
+        with st.spinner("Generating Prompt IR..."):
+            prompt_ir = generate_prompt_ir(preprocessed_data, parsed_data, compression_mode)
+            
+        with st.spinner("Locking constraints and planning compression..."):
+            prompt_ir = lock_constraints(prompt_ir)
+            prompt_ir = plan_compression(prompt_ir)
+            
+        with st.spinner("Compressing and reconstructing prompt..."):
+            compressed_sections, prompt_ir = compress_prompt(prompt_ir)
+            optimized_prompt = reconstruct_prompt(compressed_sections)
+            
+        # Save to session state for future days
+        st.session_state.prompt_ir = prompt_ir
+        st.session_state.optimized_prompt = optimized_prompt
         
-        st.success("✅ Preprocessing and Parsing complete!")
+        st.success("✅ Full compilation pipeline complete!")
         
-        # --- DAY 2 UI: PREPROCESSING RESULTS ---
+        # --- DAY 2 & 3 & 4 UI (Condensed into expanders to save space) ---
         st.divider()
-        st.subheader("3. Preprocessing Results")
-        stats = preprocessed_data["stats"]
-        col1, col2, col3, col4, col5 = st.columns(5)
-        col1.metric("Chars Before", stats["char_count_before"])
-        col2.metric("Chars After", stats["char_count_after"])
-        col3.metric("Lines", stats["line_count"])
-        col4.metric("Chunks", stats["chunk_count"])
-        col5.metric("Approx Words", stats["approx_word_count"])
-        
+        with st.expander("🔍 View Preprocessing & Parsing Details (Days 2-4)"):
+            stats = preprocessed_data["stats"]
+            c1, c2, c3, c4, c5 = st.columns(5)
+            c1.metric("Chars Before", stats["char_count_before"])
+            c2.metric("Chars After", stats["char_count_after"])
+            c3.metric("Lines", stats["line_count"])
+            c4.metric("Chunks", stats["chunk_count"])
+            c5.metric("Approx Words", stats["approx_word_count"])
+            
+            st.markdown("##### Prompt IR Summary")
+            col_ir1, col_ir2, col_ir3, col_ir4 = st.columns(4)
+            col_ir1.metric("Constraints Locked", len(prompt_ir["constraints"]))
+            col_ir2.metric("Features Detected", len(prompt_ir["features"]))
+            col_ir3.metric("IR Sections", len(prompt_ir["sections"]))
+            col_ir4.metric("Target Reduction", f"{prompt_ir['compression_policy']['target_reduction']*100:.0f}%")
+            
+            with st.expander("View Full Prompt IR (JSON)"):
+                st.json(prompt_ir)
+
+        # --- DAY 5 UI: FINAL OPTIMIZED PROMPT ---
         st.divider()
-        st.markdown("### 🧹 Cleaned Prompt")
-        st.text_area("Cleaned Text (Read-only)", value=preprocessed_data["clean_text"], height=100, disabled=True)
+        st.subheader("6. Final Optimized Prompt")
         
-        # --- DAY 3 UI: PARSING RESULTS ---
-        st.divider()
-        st.subheader("4. Section Parsing Results")
+        # Display warnings if any
+        if prompt_ir["traceability"]["warnings"]:
+            for warning in prompt_ir["traceability"]["warnings"]:
+                st.warning(warning)
         
-        # Create tabs for organized viewing of parsed sections
-        tab_constraints, tab_features, tab_output, tab_all = st.tabs([
-            " Detected Constraints", 
-            "✨ Detected Features", 
-            "📄 Output Requirements", 
-            "️ All Sections"
-        ])
+        st.text_area("Optimized Prompt (Ready to Copy)", value=optimized_prompt, height=300)
         
-        # Helper function to display a list of parsed items
-        def display_parsed_list(items):
-            if not items:
-                st.info("No items detected in this category.")
+        with st.expander("🔍 View Compression Steps & Preserved Constraints"):
+            st.markdown("#### Compression Steps Applied")
+            if prompt_ir["traceability"]["compression_steps"]:
+                for step in prompt_ir["traceability"]["compression_steps"]:
+                    st.markdown(f"- `{step}`")
             else:
-                for item in items:
-                    text = item["text"]
-                    kws = item["matched_keywords"]
-                    kw_str = f" *(Matched: {', '.join(kws)})*" if kws else ""
-                    st.markdown(f"- {text}{kw_str}")
-
-        with tab_constraints:
-            st.markdown("#### Hard Constraints (Locked for Compression)")
-            display_parsed_list(parsed_data["constraints"])
-            
-        with tab_features:
-            st.markdown("#### Required Features")
-            display_parsed_list(parsed_data["features"])
-            
-        with tab_output:
-            st.markdown("#### Output Format Requirements")
-            display_parsed_list(parsed_data["output_format"])
-            
-        with tab_all:
-            st.markdown("#### Full Breakdown")
-            for category, items in parsed_data.items():
-                if items:
-                    with st.expander(f"{category.upper()} ({len(items)} items)"):
-                        display_parsed_list(items)
-
-        # --- PLACEHOLDERS FOR DAYS 4-7 ---
-        st.divider()
-        st.subheader("5. Optimization Results (Coming Soon)")
-        st.info("🚧 *Prompt IR, Compression, and Evaluation will appear here in Days 4-7.*")
+                st.info("No compression steps were applied (Safe mode or no duplicates/fillers found).")
+                
+            st.markdown("#### Preserved Constraints")
+            if prompt_ir["constraints"]:
+                for c in prompt_ir["constraints"]:
+                    st.markdown(f"- **[{c['type']}]** {c['text']}")
+            else:
+                st.info("No constraints were detected.")
