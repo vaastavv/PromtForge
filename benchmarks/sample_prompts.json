@@ -1,0 +1,182 @@
+[
+  {
+    "id": "coding-01",
+    "category": "coding",
+    "prompt": "I want you to build a Python Flask API endpoint that accepts POST requests with JSON data containing user information. Please make sure that the endpoint validates the input data before processing. Important constraints: Do not use any paid APIs. The code must run offline with no cloud dependency. It must run on a machine with 8GB RAM. You must return the output strictly in JSON format with status code and message fields. Features required: input validation, error handling, logging module, rate limiting. Please provide clean, production-ready Python code with comments.",
+    "required_constraints": ["no paid APIs", "offline", "8GB RAM", "JSON format"],
+    "required_features": ["input validation", "error handling", "logging", "rate limiting"],
+    "expected_output_format": "json",
+    "important_keywords": ["Flask", "POST", "JSON", "Python", "validation"]
+  },
+  {
+    "id": "coding-02",
+    "category": "coding",
+    "prompt": "Can you please create a React component for a user dashboard that displays real-time metrics? I want you to make sure that it uses hooks for state management. The component must be responsive and work on mobile devices. Do not use any paid UI libraries. Use only free, open-source packages. It should support dark mode. Features: real-time charts, user profile widget, notification bell, sidebar navigation. Return the code in a single file with inline styles. Make sure to include PropTypes validation.",
+    "required_constraints": ["no paid UI libraries", "free open-source", "responsive", "dark mode"],
+    "required_features": ["real-time charts", "user profile widget", "notification bell", "sidebar navigation", "PropTypes"],
+    "expected_output_format": "code_block",
+    "important_keywords": ["React", "hooks", "responsive", "dark mode", "PropTypes"]
+  },
+  {
+    "id": "coding-03",
+    "category": "coding",
+    "prompt": "Write a SQL query to optimize a slow-running report on a PostgreSQL database with over 10 million rows. The query must join three tables: users, orders, and products. It should return the top 100 customers by total spend in the last 90 days. Constraints: must use only standard SQL, no proprietary extensions. Must include proper indexing suggestions. Must run in under 2 seconds. Features: CTE for readability, window functions for ranking, execution plan analysis. Return as a markdown code block with explanation.",
+    "required_constraints": ["standard SQL", "no proprietary extensions", "under 2 seconds", "indexing suggestions"],
+    "required_features": ["CTE", "window functions", "execution plan"],
+    "expected_output_format": "code_block",
+    "important_keywords": ["PostgreSQL", "JOIN", "CTE", "window functions", "indexing"]
+  },
+  {
+    "id": "architecture-01",
+    "category": "architecture",
+    "prompt": "Design a microservices architecture for an e-commerce platform that handles 10,000 concurrent users. The system must include services for authentication, product catalog, shopping cart, payment processing, and order management. Important constraints: all services must be deployable on-premise with no cloud dependency. Must use open-source tools only. Must support horizontal scaling. Must handle failures gracefully with circuit breakers. Features required: API gateway, service discovery, distributed tracing, message queue for async processing. Provide an architecture diagram description and technology stack recommendations.",
+    "required_constraints": ["on-premise", "no cloud dependency", "open-source only", "horizontal scaling", "circuit breakers"],
+    "required_features": ["API gateway", "service discovery", "distributed tracing", "message queue"],
+    "expected_output_format": "markdown",
+    "important_keywords": ["microservices", "e-commerce", "circuit breakers", "API gateway", "horizontal scaling"]
+  },
+  {
+    "id": "architecture-02",
+    "category": "architecture",
+    "prompt": "Plan an event-driven system for processing IoT sensor data from 50,000 devices. The system must handle real-time data ingestion, transformation, and storage. Constraints: must process events within 100ms latency. Must use Apache Kafka for message brokering. Must not lose any data during failures. Must run on commodity hardware with 8GB RAM per node. Features: stream processing with Apache Flink, time-series database storage, alerting engine, data lake integration. Return as a step-by-step architecture plan with component descriptions.",
+    "required_constraints": ["100ms latency", "Apache Kafka", "no data loss", "8GB RAM per node"],
+    "required_features": ["Apache Flink", "time-series database", "alerting engine", "data lake"],
+    "expected_output_format": "markdown",
+    "important_keywords": ["IoT", "event-driven", "Kafka", "Flink", "real-time"]
+  },
+  {
+    "id": "research-01",
+    "category": "research",
+    "prompt": "Conduct a comprehensive literature review on transformer architectures for time series forecasting. Please make sure that you cover papers from 2020 to 2025. Important constraints: must cite at least 10 peer-reviewed papers. Must compare minimum 5 different transformer variants. Must not include non-peer-reviewed sources. Must maintain academic writing style. Features required: comparison table of architectures, performance benchmark summary, gap analysis, future research directions. Return output in structured markdown with proper citations.",
+    "required_constraints": ["peer-reviewed papers", "at least 10 citations", "compare 5 variants", "academic style"],
+    "required_features": ["comparison table", "benchmark summary", "gap analysis", "future directions"],
+    "expected_output_format": "markdown",
+    "important_keywords": ["transformer", "time series", "forecasting", "peer-reviewed", "benchmark"]
+  },
+  {
+    "id": "research-02",
+    "category": "research",
+    "prompt": "Design a controlled A/B experiment to compare two recommendation algorithms: collaborative filtering vs content-based filtering. The experiment must run for 4 weeks with 10,000 users. Constraints: must use proper statistical significance testing with p-value threshold of 0.05. Must control for seasonality effects. Must preserve user privacy and anonymize all data. Must follow IRB ethical guidelines. Features: hypothesis statement, sample size calculation, metric definitions, success criteria, rollback plan. Return as a formal research proposal document.",
+    "required_constraints": ["p-value 0.05", "control seasonality", "user privacy", "IRB guidelines"],
+    "required_features": ["hypothesis", "sample size calculation", "metric definitions", "rollback plan"],
+    "expected_output_format": "markdown",
+    "important_keywords": ["A/B test", "collaborative filtering", "statistical significance", "IRB", "privacy"]
+  },
+  {
+    "id": "rag-01",
+    "category": "rag",
+    "prompt": "Build a complete RAG pipeline using LangChain and ChromaDB for a legal document question-answering system. I want you to implement document loading, chunking, embedding generation, vector storage, and retrieval-augmented generation. Constraints: must work completely offline with no paid API keys. Must use a local embedding model. Must run on 8GB RAM. Must handle PDF documents up to 500 pages. Features: recursive text splitter, similarity search with metadata filtering, citation tracking, answer confidence scoring. Return Python code with architecture explanation.",
+    "required_constraints": ["offline", "no paid API keys", "local embedding", "8GB RAM", "500 pages PDF"],
+    "required_features": ["recursive text splitter", "similarity search", "citation tracking", "confidence scoring"],
+    "expected_output_format": "code_block",
+    "important_keywords": ["RAG", "LangChain", "ChromaDB", "embedding", "retrieval"]
+  },
+  {
+    "id": "rag-02",
+    "category": "rag",
+    "prompt": "Compare vector databases for semantic search applications. Evaluate Pinecone, Weaviate, Milvus, Qdrant, and ChromaDB. For each database, analyze: indexing speed, query latency, scalability, ease of deployment, and cost. Constraints: must include actual benchmark numbers from published sources. Must evaluate both cloud and self-hosted options. Must not recommend paid-only solutions without free alternatives. Features: comparison matrix, pros and cons list, use-case recommendations, migration considerations. Return as a detailed technical report in markdown format.",
+    "required_constraints": ["benchmark numbers", "cloud and self-hosted", "free alternatives"],
+    "required_features": ["comparison matrix", "pros and cons", "use-case recommendations", "migration"],
+    "expected_output_format": "markdown",
+    "important_keywords": ["vector database", "semantic search", "Pinecone", "Weaviate", "Milvus", "ChromaDB"]
+  },
+  {
+    "id": "summarization-01",
+    "category": "summarization",
+    "prompt": "Summarize the following legal contract into key obligations, deadlines, and risk factors. The summary must preserve all monetary amounts, dates, and party names exactly as written. Constraints: do not interpret or add legal opinions. Preserve all dollar amounts precisely. Preserve all dates in original format. Must not exceed 500 words. Must flag any ambiguous clauses. Features: obligation extraction, deadline timeline, risk assessment, party identification. Return as a structured JSON object with sections for obligations, deadlines, risks, and parties.",
+    "required_constraints": ["preserve monetary amounts", "preserve dates", "not exceed 500 words", "no legal opinions"],
+    "required_features": ["obligation extraction", "deadline timeline", "risk assessment", "party identification"],
+    "expected_output_format": "json",
+    "important_keywords": ["legal contract", "obligations", "deadlines", "risk factors", "parties"]
+  },
+  {
+    "id": "summarization-02",
+    "category": "summarization",
+    "prompt": "Create concise meeting minutes from a 2-hour engineering standup transcript. The summary should capture all action items, decisions made, blockers identified, and ownership assignments. Constraints: must preserve all names of people mentioned. Must preserve all ticket numbers and JIRA references exactly. Must not add information not present in the transcript. Must be under 300 words. Features: action item list with owners, decision log, blocker summary, next steps. Return as a markdown document with clear sections.",
+    "required_constraints": ["preserve names", "preserve ticket numbers", "no added information", "under 300 words"],
+    "required_features": ["action items", "decision log", "blocker summary", "next steps"],
+    "expected_output_format": "markdown",
+    "important_keywords": ["meeting minutes", "action items", "decisions", "blockers", "JIRA"]
+  },
+  {
+    "id": "constraint-heavy-01",
+    "category": "constraint-heavy",
+    "prompt": "Perform a security audit of a Node.js web application codebase. Critical constraints: must not use any cloud-based scanning tools. Must run entirely offline on a local machine with 8GB RAM. Must not modify any source code during analysis. Must use only open-source security tools like ESLint security plugin, npm audit, and Snyk CLI in offline mode. Must comply with OWASP Top 10 checklist. Must preserve all file paths in the report. Must return findings in JSON format with severity levels. Must not include false positives without flagging them. Features: dependency vulnerability scan, code pattern analysis, secret detection, OWASP checklist verification.",
+    "required_constraints": ["no cloud scanning", "offline", "8GB RAM", "no code modification", "open-source only", "OWASP Top 10", "preserve file paths", "JSON format", "flag false positives"],
+    "required_features": ["dependency scan", "code pattern analysis", "secret detection", "OWASP checklist"],
+    "expected_output_format": "json",
+    "important_keywords": ["security audit", "Node.js", "OWASP", "vulnerability", "ESLint"]
+  },
+  {
+    "id": "constraint-heavy-02",
+    "category": "constraint-heavy",
+    "prompt": "Analyze a healthcare dataset containing patient records for a clinical research study. Strict constraints: must comply with HIPAA regulations. Must anonymize all patient identifiers before any analysis. Must not transmit data over any network. Must run on an air-gapped machine. Must use only Python with pandas and scikit-learn. Must not use any deep learning models due to hardware constraints of 8GB RAM. Must preserve statistical accuracy within 1% margin. Must log all data transformations for audit trail. Features: data cleaning pipeline, statistical analysis, visualization generation, audit logging.",
+    "required_constraints": ["HIPAA", "anonymize identifiers", "no network transmission", "air-gapped", "Python only", "8GB RAM", "1% accuracy margin", "audit trail"],
+    "required_features": ["data cleaning", "statistical analysis", "visualization", "audit logging"],
+    "expected_output_format": "markdown",
+    "important_keywords": ["healthcare", "HIPAA", "anonymize", "pandas", "scikit-learn", "audit"]
+  },
+  {
+    "id": "constraint-heavy-03",
+    "category": "constraint-heavy",
+    "prompt": "Optimize a real-time trading system for sub-millisecond order execution latency. Constraints: must use C++ for the core engine. Must not use garbage-collected languages in the hot path. Must support FIX protocol. Must handle 100,000 orders per second. Must not introduce any network calls in the critical path. Must use lock-free data structures. Must run on bare metal with no virtualization overhead. Must include comprehensive unit tests with 99% code coverage. Features: order matching engine, market data feed handler, risk pre-check module, performance profiling.",
+    "required_constraints": ["C++ core", "no garbage collection in hot path", "FIX protocol", "100K orders/sec", "no network in critical path", "lock-free", "bare metal", "99% test coverage"],
+    "required_features": ["order matching engine", "market data feed", "risk pre-check", "performance profiling"],
+    "expected_output_format": "code_block",
+    "important_keywords": ["trading", "latency", "C++", "FIX protocol", "lock-free"]
+  },
+  {
+    "id": "messy-long-01",
+    "category": "messy-long",
+    "prompt": "OK so basically I need this thing that like processes data and stuff. So the idea is that we have this data coming in from like multiple sources right, and we need to like combine it all together and then do some analysis on it. I want you to build this in Python. Make sure to use pandas. Oh and also it needs to like handle errors gracefully because sometimes the data is messy you know? And like please make sure that it can run on a machine with 8GB RAM because that's all we have. Also don't use any paid APIs because we don't have budget for that. And like the output should be in JSON format so we can like feed it into our dashboard. Features I need: data cleaning, merging datasets, statistical summary, and like some basic charts. Make sure to include all of these features. Oh and also add logging so we can debug issues later. And like make sure the code is clean and well-commented because other people will read it.",
+    "required_constraints": ["Python", "pandas", "8GB RAM", "no paid APIs", "JSON format", "error handling"],
+    "required_features": ["data cleaning", "merging datasets", "statistical summary", "charts", "logging"],
+    "expected_output_format": "json",
+    "important_keywords": ["Python", "pandas", "data", "JSON", "logging", "error handling"]
+  },
+  {
+    "id": "messy-long-02",
+    "category": "messy-long",
+    "prompt": "So there's this bug in our app and it's really annoying. Basically when you click the submit button on the registration form, sometimes it works and sometimes it doesn't. I think it might be related to like the validation or something? I want you to look at the code and fix it. Constraints: must not break any existing functionality. Must maintain backward compatibility with the current API. Must work on both Chrome and Firefox. Must not introduce any new dependencies. The fix should be minimal and focused. Features: form validation fix, error message improvement, loading state handling, unit tests for the fix. Return the fix as a git diff format so I can review it easily. Make sure to explain what caused the bug and how your fix addresses it.",
+    "required_constraints": ["no breaking changes", "backward compatibility", "Chrome and Firefox", "no new dependencies", "minimal fix"],
+    "required_features": ["form validation", "error messages", "loading state", "unit tests"],
+    "expected_output_format": "code_block",
+    "important_keywords": ["bug", "registration form", "validation", "backward compatibility", "git diff"]
+  },
+  {
+    "id": "messy-long-03",
+    "category": "messy-long",
+    "prompt": "Requirements Document v2.3. The system shall provide user authentication via OAuth 2.0. The system must support multi-factor authentication. The system should handle at least 1000 concurrent sessions. The system must not store passwords in plain text. The system shall provide role-based access control with minimum 5 roles. The system must log all authentication events. The system should support SSO integration. The system must comply with GDPR data protection requirements. The system shall provide account lockout after 5 failed attempts. The system must support password reset via email with token expiration of 24 hours. Make sure to implement all of these requirements. Return as a technical specification document in markdown format with sections for each requirement.",
+    "required_constraints": ["OAuth 2.0", "multi-factor authentication", "1000 concurrent sessions", "no plain text passwords", "GDPR", "5 failed attempts lockout", "24 hour token expiration"],
+    "required_features": ["role-based access control", "authentication logging", "SSO integration", "password reset"],
+    "expected_output_format": "markdown",
+    "important_keywords": ["authentication", "OAuth", "RBAC", "GDPR", "SSO", "multi-factor"]
+  },
+  {
+    "id": "format-sensitive-01",
+    "category": "format-sensitive",
+    "prompt": "Generate an OpenAPI 3.0 schema for a REST API that manages a bookstore. The schema must include endpoints for: GET /books, POST /books, GET /books/{id}, PUT /books/{id}, DELETE /books/{id}. Each endpoint must have proper request and response schemas. Constraints: must be valid OpenAPI 3.0 specification. Must include all HTTP status codes (200, 201, 400, 404, 500). Must include authentication with Bearer token. Must include rate limiting headers in responses. Features: pagination support, filtering parameters, sorting options, error response schema. Return strictly as valid JSON that can be pasted into Swagger Editor.",
+    "required_constraints": ["valid OpenAPI 3.0", "all HTTP status codes", "Bearer token auth", "rate limiting headers"],
+    "required_features": ["pagination", "filtering", "sorting", "error response schema"],
+    "expected_output_format": "json",
+    "important_keywords": ["OpenAPI", "REST API", "Swagger", "Bearer token", "bookstore"]
+  },
+  {
+    "id": "format-sensitive-02",
+    "category": "format-sensitive",
+    "prompt": "Create a CSV dataset with 50 rows of synthetic employee data for testing a HR analytics dashboard. The CSV must have exactly these columns: employee_id, first_name, last_name, department, salary, hire_date, performance_score. Constraints: must use comma as delimiter. Must include header row. Must not contain any null values. Must have realistic salary ranges between 40000 and 150000. Must have hire dates between 2015 and 2025. Must include minimum 5 different departments. Features: data variety, edge cases included, balanced department distribution, realistic name distribution. Return strictly as CSV text that can be saved as a .csv file.",
+    "required_constraints": ["comma delimiter", "header row", "no null values", "salary 40000-150000", "dates 2015-2025", "5 departments"],
+    "required_features": ["data variety", "edge cases", "balanced distribution", "realistic names"],
+    "expected_output_format": "table",
+    "important_keywords": ["CSV", "employee", "HR analytics", "synthetic data", "dataset"]
+  },
+  {
+    "id": "format-sensitive-03",
+    "category": "format-sensitive",
+    "prompt": "Write a Docker Compose YAML configuration for a full-stack web application with these services: frontend (React on nginx), backend (Node.js Express API), database (PostgreSQL 15), cache (Redis), and reverse proxy (Traefik). Constraints: must be valid Docker Compose v3.8 syntax. Must use environment variables for all sensitive data. Must define named volumes for database persistence. Must include health checks for all services. Must define a custom network. Must not use latest tag for any image. Features: service dependencies with condition, restart policies, resource limits, logging configuration. Return strictly as valid YAML.",
+    "required_constraints": ["Docker Compose v3.8", "environment variables", "named volumes", "health checks", "custom network", "no latest tag"],
+    "required_features": ["service dependencies", "restart policies", "resource limits", "logging config"],
+    "expected_output_format": "code_block",
+    "important_keywords": ["Docker Compose", "YAML", "PostgreSQL", "Redis", "Traefik", "health checks"]
+  }
+]

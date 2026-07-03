@@ -1,6 +1,6 @@
 import streamlit as st
 import json
-from datetime import datetime
+import os
 
 # Core imports
 from core.preprocessor import preprocess_prompt
@@ -10,6 +10,15 @@ from core.constraint_locker import lock_constraints
 from core.compression_planner import plan_compression
 from core.compressor import compress_prompt
 from core.reconstructor import reconstruct_prompt
+
+# Evaluation imports
+from evaluation.token_metrics import estimate_tokens, calculate_token_reduction
+from evaluation.constraint_score import calculate_constraint_preservation
+from evaluation.feature_score import calculate_feature_coverage
+from evaluation.keyword_score import extract_keywords, calculate_keyword_preservation
+from evaluation.output_format_score import calculate_output_format_score
+from evaluation.risk_score import calculate_risk_score
+from evaluation.final_score import calculate_final_score
 
 # ==============================================================================
 # Page Configuration
@@ -34,35 +43,27 @@ def load_sample_prompt():
     st.session_state.raw_prompt_input = SAMPLE_PROMPT
 
 # ==============================================================================
-# Sidebar: Pipeline Explanation
+# Sidebar
 # ==============================================================================
 with st.sidebar:
-    st.header("⚒️ PromptForge Pipeline")
+    st.header("⚒️ PromptForge")
     st.markdown("""
-    1. **Raw Prompt Input**
-    2. **Prompt Preprocessor** *(Day 2)*
-    3. **Section Parser** *(Day 3)*
-    4. **Prompt IR Generator** *(Day 4)*
-    5. **Constraint Locker & Compressor** *(Day 5 - ACTIVE)*
-    6. **Prompt Reconstructor** *(Day 5 - ACTIVE)*
-    7. **Multi-Metric Evaluator** *(Day 6)*
-    8. **Adaptive Repair** *(Day 6)*
-    9. **Final Output + Report** *(Day 7)*
+    1. Raw Prompt Input
+    2. Preprocessor
+    3. Section Parser
+    4. Prompt IR Generator
+    5. Constraint Locker
+    6. Compression Planner
+    7. Rule-Based Compressor
+    8. Reconstructor
+    9. **Multi-Metric Evaluator** *(Day 6 - ACTIVE)*
+    10. Final Output
     """)
     st.divider()
-    st.caption("v0.5.0 (Day 5 Compressor)\nLocal-first, 8GB RAM friendly, No paid APIs.")
+    st.caption("v0.6.0 (Day 6 Evaluator)\nLocal-first | 8GB RAM | No paid APIs")
 
 # ==============================================================================
-# Main UI: Header & Description
-# ==============================================================================
-st.title("⚒️ PromptForge")
-st.markdown("""
-**Offline Constraint-Preserving Prompt Compiler**  
-Transform messy prompts into short, safe, and optimized prompts while strictly preserving intent, constraints, and output formats.
-""")
-
-# ==============================================================================
-# Sample Prompt Data
+# Sample Prompt
 # ==============================================================================
 SAMPLE_PROMPT = """You are an expert Python developer. I want you to write a script that scrapes data from a website. 
 Important constraints: 
@@ -72,7 +73,6 @@ Important constraints:
 - You must return the output strictly in JSON format.
 - Do not miss any of the features mentioned.
 
-
 Features required:
 - Prompt IR generation
 - Multi-metric evaluation
@@ -81,10 +81,12 @@ Features required:
 Please provide the code and a brief explanation. Make sure to use Python and no cloud dependency. Make sure that the code is clean. Make sure that the code is clean."""
 
 # ==============================================================================
-# Input Section
+# Main UI
 # ==============================================================================
-st.subheader("1. Input Prompt")
+st.title("⚒️ PromptForge — Prompt Optimizer")
+st.markdown("Transform messy prompts into short, safe, optimized prompts while preserving intent, constraints, and output formats.")
 
+st.subheader("1. Input Prompt")
 col1, col2 = st.columns([3, 1])
 with col1:
     raw_prompt = st.text_area(
@@ -95,96 +97,88 @@ with col1:
         key="raw_prompt_input"
     )
 with col2:
-    st.write("") 
-    st.write("") 
-    st.button("📋 Load Sample Prompt", use_container_width=True, on_click=load_sample_prompt)
+    st.write("")
+    st.write("")
+    st.button("📋 Load Sample", use_container_width=True, on_click=load_sample_prompt)
 
 compression_mode = st.selectbox(
     "2. Select Compression Mode",
-    options=["Safe", "Balanced", "Aggressive", "Research"],
-    help="Safe: Minimal changes. Balanced: Good reduction. Aggressive: Max reduction. Research: Optimized for technical prompts."
+    options=["Safe", "Balanced", "Aggressive", "Research"]
 )
 
-# ==============================================================================
-# Action Button
-# ==============================================================================
 st.divider()
 optimize_clicked = st.button("🚀 Optimize Prompt", type="primary", use_container_width=True)
 
 # ==============================================================================
-# Output Section
+# Pipeline Execution & Output
 # ==============================================================================
 if optimize_clicked:
     if not raw_prompt.strip():
-        st.warning("⚠️ Please enter a prompt or load the sample prompt first.")
+        st.warning("⚠️ Please enter a prompt first.")
     else:
-        # --- PIPELINE EXECUTION ---
-        with st.spinner("Running Prompt Preprocessor..."):
+        with st.spinner("Running full pipeline..."):
             preprocessed_data = preprocess_prompt(raw_prompt)
-        
-        with st.spinner("Running Section Parser..."):
             parsed_data = parse_sections(preprocessed_data)
-            
-        with st.spinner("Generating Prompt IR..."):
             prompt_ir = generate_prompt_ir(preprocessed_data, parsed_data, compression_mode)
-            
-        with st.spinner("Locking constraints and planning compression..."):
             prompt_ir = lock_constraints(prompt_ir)
             prompt_ir = plan_compression(prompt_ir)
-            
-        with st.spinner("Compressing and reconstructing prompt..."):
             compressed_sections, prompt_ir = compress_prompt(prompt_ir)
             optimized_prompt = reconstruct_prompt(compressed_sections)
-            
-        # Save to session state for future days
-        st.session_state.prompt_ir = prompt_ir
-        st.session_state.optimized_prompt = optimized_prompt
-        
-        st.success("✅ Full compilation pipeline complete!")
-        
-        # --- DAY 2 & 3 & 4 UI (Condensed into expanders to save space) ---
-        st.divider()
-        with st.expander("🔍 View Preprocessing & Parsing Details (Days 2-4)"):
-            stats = preprocessed_data["stats"]
-            c1, c2, c3, c4, c5 = st.columns(5)
-            c1.metric("Chars Before", stats["char_count_before"])
-            c2.metric("Chars After", stats["char_count_after"])
-            c3.metric("Lines", stats["line_count"])
-            c4.metric("Chunks", stats["chunk_count"])
-            c5.metric("Approx Words", stats["approx_word_count"])
-            
-            st.markdown("##### Prompt IR Summary")
-            col_ir1, col_ir2, col_ir3, col_ir4 = st.columns(4)
-            col_ir1.metric("Constraints Locked", len(prompt_ir["constraints"]))
-            col_ir2.metric("Features Detected", len(prompt_ir["features"]))
-            col_ir3.metric("IR Sections", len(prompt_ir["sections"]))
-            col_ir4.metric("Target Reduction", f"{prompt_ir['compression_policy']['target_reduction']*100:.0f}%")
-            
-            with st.expander("View Full Prompt IR (JSON)"):
-                st.json(prompt_ir)
 
-        # --- DAY 5 UI: FINAL OPTIMIZED PROMPT ---
+        st.success("✅ Optimization complete!")
+
+        # --- DAY 6: MULTI-METRIC EVALUATION ---
         st.divider()
-        st.subheader("6. Final Optimized Prompt")
+        st.subheader("3. Multi-Metric Evaluation Dashboard")
         
-        # Display warnings if any
+        # Calculate all metrics
+        token_red = calculate_token_reduction(raw_prompt, optimized_prompt)
+        constraint_score = calculate_constraint_preservation(prompt_ir["constraints"], optimized_prompt)
+        feature_score = calculate_feature_coverage(prompt_ir["features"], optimized_prompt)
+        keyword_score = calculate_keyword_preservation(extract_keywords(prompt_ir), optimized_prompt)
+        format_score = calculate_output_format_score(prompt_ir["output_requirements"], optimized_prompt)
+        risk = calculate_risk_score(constraint_score, feature_score, format_score)
+        final_score = calculate_final_score(token_red, constraint_score, feature_score, format_score, keyword_score)
+
+        # Display Metric Cards Row 1
+        m1, m2, m3, m4, m5 = st.columns(5)
+        m1.metric("Token Reduction", f"{token_red*100:.1f}%", f"Target: {prompt_ir['compression_policy']['target_reduction']*100:.0f}%")
+        m2.metric("Constraint Score", f"{constraint_score*100:.0f}%", "Target: 100%")
+        m3.metric("Feature Coverage", f"{feature_score*100:.0f}%", "Target: 90%")
+        m4.metric("Format Score", f"{format_score*100:.0f}%", "Target: 90%")
+        m5.metric("Keyword Score", f"{keyword_score*100:.0f}%")
+
+        # Display Metric Cards Row 2
+        m6, m7 = st.columns(2)
+        m6.metric("Risk Level", risk)
+        m7.metric("Final Quality Score", f"{final_score*100:.1f}%")
+
+        # Risk Warning
+        if risk == "High":
+            st.error("⚠️ HIGH RISK: Critical constraints were lost during compression! Consider using 'Safe' or 'Balanced' mode.")
+        elif risk == "Medium":
+            st.warning("⚠️ MEDIUM RISK: Some features or formatting may be degraded. Review the output carefully.")
+        else:
+            st.success("✅ LOW RISK: The optimized prompt is safe and preserves all critical elements.")
+
+        # --- FINAL OPTIMIZED PROMPT ---
+        st.divider()
+        st.subheader("4. Final Optimized Prompt")
+        
         if prompt_ir["traceability"]["warnings"]:
-            for warning in prompt_ir["traceability"]["warnings"]:
-                st.warning(warning)
-        
-        st.text_area("Optimized Prompt (Ready to Copy)", value=optimized_prompt, height=300)
-        
-        with st.expander("🔍 View Compression Steps & Preserved Constraints"):
-            st.markdown("#### Compression Steps Applied")
-            if prompt_ir["traceability"]["compression_steps"]:
-                for step in prompt_ir["traceability"]["compression_steps"]:
-                    st.markdown(f"- `{step}`")
+            for w in prompt_ir["traceability"]["warnings"]:
+                st.warning(w)
+
+        st.text_area("Optimized Prompt", value=optimized_prompt, height=300)
+
+        with st.expander("🔍 Compression Steps & Preserved Constraints"):
+            st.markdown("#### Steps Applied")
+            steps = prompt_ir["traceability"]["compression_steps"]
+            if steps:
+                for s in steps:
+                    st.markdown(f"- `{s}`")
             else:
-                st.info("No compression steps were applied (Safe mode or no duplicates/fillers found).")
-                
+                st.info("No compression steps applied.")
             st.markdown("#### Preserved Constraints")
-            if prompt_ir["constraints"]:
-                for c in prompt_ir["constraints"]:
-                    st.markdown(f"- **[{c['type']}]** {c['text']}")
-            else:
-                st.info("No constraints were detected.")
+            for c in prompt_ir["constraints"]:
+                st.markdown(f"- **[{c['type']}]** {c['text']}")
