@@ -1,31 +1,74 @@
-def plan_compression(prompt_ir):
+"""
+Advanced Compression Planner
+Assigns specific compression actions to sections based on IR, relevance, and mode.
+"""
+
+def determine_action(section: dict, mode: str) -> str:
+    """Determines the compression action for a single section."""
+    name = section.get("name", "other").lower()
+    locked = section.get("locked", False)
+    relevance = section.get("relevance_score", 0.5)
+    label = section.get("relevance_label", "medium")
+    
+    # 1. Absolute Rules (Apply to all modes)
+    if locked and name in ["task", "constraints", "output_format"]:
+        return "preserve"
+    if locked and name == "features":
+        return "compress_lightly"
+    if name == "examples" and locked:
+        return "preserve"
+
+    # 2. Mode-Specific Rules
+    if mode == "safe":
+        if name in ["context", "other"]:
+            return "remove_duplicates"
+        return "compress_lightly" # Default safe action
+        
+    elif mode == "balanced":
+        if name == "context":
+            return "summarize" if label in ["critical", "high"] else "compress_aggressively"
+        if name == "examples":
+            return "compress_aggressively"
+        if name == "other" and relevance < 0.4:
+            return "remove_if_low_value"
+        return "compress_lightly"
+        
+    elif mode == "aggressive":
+        if name == "context":
+            return "compress_aggressively"
+        if name in ["examples", "other"]:
+            return "remove_if_low_value" if relevance < 0.5 else "compress_aggressively"
+        return "compress_lightly"
+        
+    elif mode == "research":
+        # Research mode behaves like balanced but logs heavily
+        if name == "context":
+            return "summarize" if label in ["critical", "high"] else "compress_aggressively"
+        if name == "examples":
+            return "compress_aggressively"
+        return "compress_lightly"
+
+    return "compress_lightly" # Fallback
+
+def plan_compression(prompt_ir: dict) -> dict:
     """
-    Assigns a compression strategy to each section based on the selected mode.
+    Iterates through all sections and assigns a compression_action.
+    In 'research' mode, it logs the reasoning to traceability.
     """
-    mode = prompt_ir["compression_policy"]["mode"]
+    mode = prompt_ir.get("compression_policy", {}).get("mode", "balanced")
+    traceability = prompt_ir.get("traceability", {})
+    plan_log = traceability.get("compression_plan_log", [])
     
-    # Define strategies for non-locked sections based on mode
-    mode_strategies = {
-        "safe": {"context": "compress_light", "examples": "compress_light", "other": "preserve"},
-        "balanced": {"context": "compress_moderate", "examples": "compress_aggressive", "other": "compress_light"},
-        "aggressive": {"context": "compress_aggressive", "examples": "remove", "other": "remove"},
-        "research": {"context": "compress_moderate", "examples": "compress_moderate", "other": "compress_light"}
-    }
+    for section in prompt_ir.get("sections", []):
+        action = determine_action(section, mode)
+        section["compression_action"] = action
+        
+        # Research mode logging
+        if mode == "research":
+            reason = f"Section '{section['name']}' assigned '{action}' due to mode={mode}, locked={section.get('locked')}, relevance={section.get('relevance_score')}"
+            plan_log.append(reason)
+            
+    traceability["compression_plan_log"] = plan_log
+    prompt_ir["traceability"] = traceability
     
-    strategies = mode_strategies.get(mode, mode_strategies["balanced"])
-    
-    for section in prompt_ir["sections"]:
-        # If already locked by constraint_locker, respect that
-        if section["locked"]:
-            if section["name"].lower() in ["constraints", "output_format", "task"]:
-                section["strategy"] = "preserve"
-            elif section["name"].lower() == "features":
-                section["strategy"] = "compress_light"
-        else:
-            name_lower = section["name"].lower()
-            if name_lower in strategies:
-                section["strategy"] = strategies[name_lower]
-            else:
-                section["strategy"] = "compress_light"
-                
     return prompt_ir
