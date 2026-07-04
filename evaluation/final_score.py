@@ -1,15 +1,18 @@
 def calculate_final_score(token_reduction: float, constraint_score: float, 
                           feature_score: float, format_score: float, 
-                          keyword_score: float, semantic_score: float = -1.0) -> float:
+                          keyword_score: float, semantic_score: float = None) -> float:
     """
     Weighted final quality score.
-    Automatically falls back to rule-based weights if semantic_score is -1.0.
+    Dynamically adjusts weights based on whether semantic similarity is available.
     """
-    if semantic_score < 0:
-        # Phase 1 Fallback Weights
+    if semantic_score is None:
+        # Phase 1 Rule-Based Weights (Total: 100%)
         weights = {
-            "token_reduction": 0.15, "constraint": 0.30, "feature": 0.25, 
-            "format": 0.15, "keyword": 0.15
+            "token_reduction": 0.15, 
+            "constraint": 0.30, 
+            "feature": 0.25, 
+            "format": 0.15, 
+            "keyword": 0.15
         }
         return round(
             weights["token_reduction"] * token_reduction +
@@ -19,10 +22,14 @@ def calculate_final_score(token_reduction: float, constraint_score: float,
             weights["keyword"] * keyword_score, 4
         )
     else:
-        # Phase 2 Semantic Weights
+        # Phase 2 Semantic Weights (Total: 100%)
         weights = {
-            "token_reduction": 0.10, "constraint": 0.20, "feature": 0.15, 
-            "format": 0.10, "keyword": 0.10, "semantic": 0.35
+            "token_reduction": 0.10, 
+            "constraint": 0.25, 
+            "feature": 0.20, 
+            "format": 0.15, 
+            "keyword": 0.15,
+            "semantic": 0.15
         }
         return round(
             weights["token_reduction"] * token_reduction +
