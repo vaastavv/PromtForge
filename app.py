@@ -30,7 +30,7 @@ from visualization.diff_viewer import compute_line_diff, calculate_diff_stats
 
 # Phase 2 & 3: Engine imports
 from models.embedding_model import load_embedding_model, is_embedding_available
-from models.ollama_check import get_ollama_status
+from models.ollama_client import is_ollama_available, get_available_models, rewrite_prompt_with_ollama
 
 # ==============================================================================
 # Page Configuration & Session State
@@ -80,6 +80,7 @@ def run_optimization():
         return
     
     with st.spinner("Running full pipeline..."):
+        # 1. Rule-Based Pipeline
         preprocessed_data = preprocess_prompt(raw_prompt)
         parsed_data = parse_sections(preprocessed_data)
         prompt_ir = generate_prompt_ir(preprocessed_data, parsed_data, st.session_state.compression_mode)
@@ -88,28 +89,46 @@ def run_optimization():
         prompt_ir = plan_compression(prompt_ir)
         
         compressed_sections, prompt_ir = compress_prompt(prompt_ir)
-        optimized_prompt, prompt_ir = reconstruct_prompt(compressed_sections, prompt_ir)
+        rule_based_prompt, prompt_ir = reconstruct_prompt(compressed_sections, prompt_ir)
         
-        # Pre-Repair Evaluation
-        pre_repair_report = run_evaluation(raw_prompt, optimized_prompt, prompt_ir)
+        # 2. Optional Local LLM Rewrite
+        llm_rewritten_prompt = None
+        use_llm = st.session_state.get("use_ollama_rewrite", False)
+        selected_model = st.session_state.get("ollama_model", "llama3.2:1b")
         
-        # Adaptive Repair
-        repaired_prompt = optimized_prompt
+        if use_llm and is_ollama_available():
+            prompt_ir["traceability"]["compression_steps"].append(f"Local LLM rewrite applied using {selected_model}")
+            with st.spinner(f"🦙 Polishing with {selected_model}..."):
+                rewrite_result = rewrite_prompt_with_ollama(rule_based_prompt, prompt_ir, selected_model)
+                if rewrite_result["success"]:
+                    llm_rewritten_prompt = rewrite_result["rewritten_prompt"]
+                else:
+                    prompt_ir["traceability"]["warnings"].append(f"LLM Rewrite failed: {rewrite_result['error']}")
+                    
+        # 3. Determine prompt to evaluate
+        prompt_to_evaluate = llm_rewritten_prompt if llm_rewritten_prompt else rule_based_prompt
+        
+        # 4. Evaluation & Adaptive Repair
+        pre_repair_report = run_evaluation(raw_prompt, prompt_to_evaluate, prompt_ir)
+        
+        final_prompt = prompt_to_evaluate
         repair_applied = False
         if pre_repair_report["risk"] in ["High", "Medium"]:
-            repaired_prompt, prompt_ir = repair_prompt(prompt_ir, optimized_prompt, pre_repair_report)
+            final_prompt, prompt_ir = repair_prompt(prompt_ir, prompt_to_evaluate, pre_repair_report)
             if prompt_ir["traceability"].get("restored_items"):
                 repair_applied = True
                 
-        # Post-Repair Evaluation
-        post_repair_report = run_evaluation(raw_prompt, repaired_prompt, prompt_ir) if repair_applied else pre_repair_report
+        post_repair_report = run_evaluation(raw_prompt, final_prompt, prompt_ir) if repair_applied else pre_repair_report
         
-        diff_result = compute_line_diff(raw_prompt, repaired_prompt)
+        # 5. Diff & Session State
+        diff_result = compute_line_diff(raw_prompt, final_prompt)
         diff_stats = calculate_diff_stats(diff_result)
         
         st.session_state.optimization_complete = True
         st.session_state.prompt_ir = prompt_ir
-        st.session_state.optimized_prompt = repaired_prompt
+        st.session_state.rule_based_prompt = rule_based_prompt
+        st.session_state.llm_rewritten_prompt = llm_rewritten_prompt
+        st.session_state.final_prompt = final_prompt
         st.session_state.pre_repair_report = pre_repair_report
         st.session_state.post_repair_report = post_repair_report
         st.session_state.repair_applied = repair_applied
@@ -121,35 +140,14 @@ def run_optimization():
 # ==============================================================================
 with st.sidebar:
     st.header("⚒️ PromptForge")
-    st.caption("v2.1.0 | Phase 3 Prep")
+    st.caption("v3.0.0 | Phase 3: Local LLM")
     st.divider()
-    
     st.markdown("### System Status")
+    if is_embedding_available(): st.success("✅ Semantic Engine Ready")
+    else: st.warning("⚠️ Semantic Engine Offline")
     
-    # Semantic Engine Status
-    if is_embedding_available():
-        st.success("✅ Semantic Engine Ready")
-    else:
-        st.warning("⚠️ Semantic Engine Offline")
-        
-    st.divider()
-    
-    # Day 15: Ollama Status
-    st.markdown("### Ollama Status")
-    ollama_status = get_ollama_status()
-    
-    if ollama_status["status"] == "Available":
-        st.success(f"✅ {ollama_status['message']}")
-        if ollama_status["models"]:
-            st.caption(f"Models: {', '.join(ollama_status['models'])}")
-        else:
-            st.warning("No models downloaded yet.")
-    elif ollama_status["status"] == "Not Running":
-        st.warning(f"⚠️ {ollama_status['message']}")
-        st.caption("Start the Ollama app or run `ollama serve`.")
-    else:
-        st.error(f"❌ {ollama_status['message']}")
-        st.caption("Download from https://ollama.com")
+    if is_ollama_available(): st.success("✅ Ollama Ready")
+    else: st.error("❌ Ollama Offline")
 
 # ==============================================================================
 # Sample Prompt
@@ -165,6 +163,7 @@ Important constraints:
 Features required:
 - Prompt IR generation
 - Multi-metric evaluation
+- Adaptive repair logic
 
 Context:
 This is a very long and unnecessary explanation of why we need this script. It was written by someone who talks too much. We need this script because the old one was bad.
@@ -175,7 +174,7 @@ Please provide the code. Make sure to use Python. Make sure the code is clean. M
 # Main UI: 7-Tab Layout
 # ==============================================================================
 st.title("⚒️ PromptForge")
-st.markdown("Offline Constraint-Preserving Prompt Compiler with Semantic Intelligence")
+st.markdown("Offline Constraint-Preserving Prompt Compiler with Semantic Intelligence & Local LLM Polish")
 
 tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
     "1. Input", "2. Optimized Prompt", "3. Prompt IR", 
@@ -186,36 +185,42 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
 with tab1:
     st.header("1. Input Configuration")
     
-    raw_prompt = st.text_area(
-        "Paste your raw, messy prompt here:", 
-        value=st.session_state.raw_prompt_input, 
-        height=300, 
-        placeholder="Enter your prompt...", 
-        key="raw_prompt_input"
-    )
+    raw_prompt = st.text_area("Paste your raw, messy prompt here:", value=st.session_state.raw_prompt_input, height=300, key="raw_prompt_input")
     
     col_btn1, col_btn2 = st.columns([1, 1])
     with col_btn1:
         st.button("📋 Load Sample Prompt", use_container_width=True, on_click=load_sample_prompt)
     with col_btn2:
-        st.session_state.compression_mode = st.selectbox(
-            "Compression Mode", 
-            options=["Safe", "Balanced", "Aggressive", "Research"]
-        )
+        st.session_state.compression_mode = st.selectbox("Compression Mode", options=["Safe", "Balanced", "Aggressive", "Research"])
         
     st.divider()
+    st.subheader("Optional Enhancements")
     
-    col_sem, col_opt = st.columns([1, 2])
+    col_sem, col_llm = st.columns(2)
     with col_sem:
-        enable_semantic = st.checkbox("Enable semantic evaluation", value=False, help="Loads local embedding model (requires internet for first download).")
+        st.markdown("**Semantic Evaluation**")
+        enable_semantic = st.checkbox("Enable semantic evaluation", value=False, key="enable_semantic")
         if enable_semantic:
             load_embedding_model()
             if is_embedding_available(): st.success("✅ Engine Ready")
-            else: st.warning("️ Engine Unavailable")
+            else: st.warning("⚠️ Engine Unavailable")
             
-    with col_opt:
-        st.button("🚀 Optimize Prompt", type="primary", use_container_width=True, on_click=run_optimization)
-        
+    with col_llm:
+        st.markdown("**Local LLM Polish**")
+        ollama_avail = is_ollama_available()
+        st.checkbox("Use local LLM rewrite", key="use_ollama_rewrite", disabled=not ollama_avail)
+        if ollama_avail:
+            models = get_available_models()
+            if models:
+                st.selectbox("Model", options=models, key="ollama_model", disabled=not st.session_state.get("use_ollama_rewrite", False))
+            else:
+                st.caption("No models found. Run `ollama pull llama3.2:1b`")
+        else:
+            st.caption("Ollama not running.")
+            
+    st.divider()
+    st.button("🚀 Optimize Prompt", type="primary", use_container_width=True, on_click=run_optimization)
+    
     if st.session_state.optimization_complete:
         st.success("✅ Optimization complete! Navigate to the tabs above to view results.")
 
@@ -227,17 +232,17 @@ with tab2:
     else:
         if st.session_state.repair_applied:
             st.success("✅ Adaptive Repair Applied: Missing critical elements were automatically restored!")
+        elif st.session_state.llm_rewritten_prompt:
+            st.success("✅ Local LLM rewrite applied successfully.")
             
-        st.text_area(
-            "Optimized Prompt (Copy-Friendly)", 
-            value=st.session_state.optimized_prompt, 
-            height=500
-        )
+        st.text_area("Final Prompt", value=st.session_state.final_prompt, height=400)
         
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Original Tokens", st.session_state.pre_repair_report.get("original_tokens", "N/A"))
-        c2.metric("Optimized Tokens", st.session_state.pre_repair_report.get("compressed_tokens", "N/A"))
-        c3.metric("Token Reduction", f"{st.session_state.post_repair_report['token_reduction']*100:.1f}%")
+        with st.expander("🔍 View Intermediate Versions"):
+            st.markdown("**Rule-Based Version (Before LLM):**")
+            st.text_area("Rule-Based", value=st.session_state.rule_based_prompt, height=200)
+            if st.session_state.llm_rewritten_prompt:
+                st.markdown("**LLM Rewritten Version (Before Repair):**")
+                st.text_area("LLM Rewritten", value=st.session_state.llm_rewritten_prompt, height=200)
 
 # --- TAB 3: PROMPT IR ---
 with tab3:
@@ -246,7 +251,6 @@ with tab3:
         st.info("ℹ️ Run the optimization pipeline in the Input tab to see results here.")
     else:
         ir = st.session_state.prompt_ir
-        
         st.subheader("Section Relevance & Strategy")
         plan_data = []
         for sec in ir.get("sections", []):
@@ -260,20 +264,6 @@ with tab3:
         if plan_data:
             st.dataframe(pd.DataFrame(plan_data), use_container_width=True, hide_index=True)
             
-        st.subheader("Locked Constraints")
-        c_data = [{"Text": c.get("text", ""), "Type": c.get("type", ""), "Priority": c.get("priority", "")} for c in ir.get("constraints", [])]
-        if c_data:
-            st.dataframe(pd.DataFrame(c_data), use_container_width=True, hide_index=True)
-        else:
-            st.info("No constraints detected.")
-            
-        st.subheader("Required Features")
-        f_data = [{"Name": f.get("name", ""), "Priority": f.get("priority", ""), "Locked": "🔒" if f.get("locked", False) else ""} for f in ir.get("features", [])]
-        if f_data:
-            st.dataframe(pd.DataFrame(f_data), use_container_width=True, hide_index=True)
-        else:
-            st.info("No features detected.")
-            
         with st.expander("View Full Prompt IR (JSON)"):
             st.json(ir)
 
@@ -283,26 +273,7 @@ with tab4:
     if not st.session_state.optimization_complete:
         st.info("ℹ️ Run the optimization pipeline in the Input tab to see results here.")
     else:
-        pre = st.session_state.pre_repair_report
         post = st.session_state.post_repair_report
-        
-        if st.session_state.repair_applied:
-            st.info("⚠️ Showing **After Repair** metrics. The system detected missing items and restored them.")
-            col_pre, col_post = st.columns(2)
-            with col_pre:
-                st.markdown("#### 📉 Before Repair")
-                st.metric("Constraint Score", f"{pre['constraint_score']['score']*100:.0f}%")
-                st.metric("Feature Coverage", f"{pre['feature_score']['score']*100:.0f}%")
-                st.metric("Risk Level", pre['risk'])
-            with col_post:
-                st.markdown("#### 📈 After Repair")
-                st.metric("Constraint Score", f"{post['constraint_score']['score']*100:.0f}%")
-                st.metric("Feature Coverage", f"{post['feature_score']['score']*100:.0f}%")
-                st.metric("Risk Level", post['risk'])
-            st.divider()
-        else:
-            st.success("✅ No repair needed. All critical elements were preserved.")
-            
         st.markdown("#### Final Quality Metrics")
         m1, m2, m3, m4, m5 = st.columns(5)
         m1.metric("Token Reduction", f"{post['token_reduction']*100:.1f}%")
@@ -325,7 +296,6 @@ with tab5:
     else:
         diff_result = st.session_state.diff_result
         diff_stats = st.session_state.diff_stats
-        
         c1, c2, c3, c4 = st.columns(4)
         c1.metric("Original Lines", diff_stats["original_lines"])
         c2.metric("Optimized Lines", diff_stats["optimized_lines"])
@@ -336,16 +306,6 @@ with tab5:
         if diff_result["removed"]:
             for line in diff_result["removed"]:
                 st.markdown(f"- 🔴 {line}")
-        else:
-            st.info("No lines were removed.")
-            
-        st.subheader("➕ Added/Restored Items")
-        restored = st.session_state.prompt_ir["traceability"].get("restored_items", [])
-        if restored:
-            for item in restored:
-                st.markdown(f"- 🟢 {item}")
-        else:
-            st.info("No items were added or restored.")
 
 # --- TAB 6: TRACEABILITY ---
 with tab6:
@@ -355,14 +315,12 @@ with tab6:
     else:
         trace = st.session_state.prompt_ir.get("traceability", {})
         
-        st.subheader("🗜️ Compression Steps")
+        st.subheader("🗜️ Compression & Rewrite Steps")
         steps = trace.get("compression_steps", [])
         if steps:
             for step in steps:
                 st.markdown(f"- `{step}`")
-        else:
-            st.info("No compression steps applied.")
-            
+                
         st.subheader("🔧 Restored Items")
         restored = trace.get("restored_items", [])
         if restored:
@@ -383,54 +341,14 @@ with tab6:
 with tab7:
     st.header("7. Export Results")
     if not st.session_state.optimization_complete:
-        st.info("️ Run the optimization pipeline in the Input tab to see results here.")
+        st.info("ℹ️ Run the optimization pipeline in the Input tab to see results here.")
     else:
         col1, col2, col3 = st.columns(3)
-        
         with col1:
-            st.markdown("#### 📝 Optimized Prompt")
-            st.download_button(
-                label="📥 Download .txt",
-                data=st.session_state.optimized_prompt,
-                file_name="optimized_prompt.txt",
-                mime="text/plain",
-                use_container_width=True
-            )
-            
+            st.download_button("📥 Download Prompt (.txt)", data=st.session_state.final_prompt, file_name="optimized_prompt.txt", mime="text/plain", use_container_width=True)
         with col2:
-            st.markdown("#### 🧠 Prompt IR")
             ir_json = json.dumps(st.session_state.prompt_ir, indent=2)
-            st.download_button(
-                label="📥 Download .json",
-                data=ir_json,
-                file_name="prompt_ir.json",
-                mime="application/json",
-                use_container_width=True
-            )
-            
+            st.download_button("📥 Download IR (.json)", data=ir_json, file_name="prompt_ir.json", mime="application/json", use_container_width=True)
         with col3:
-            st.markdown("#### 📊 Evaluation Report")
-            report = {
-                "timestamp": datetime.now().isoformat(),
-                "compression_mode": st.session_state.compression_mode,
-                "metrics": {
-                    "token_reduction": st.session_state.post_repair_report['token_reduction'],
-                    "constraint_score": st.session_state.post_repair_report['constraint_score']['score'],
-                    "feature_score": st.session_state.post_repair_report['feature_score']['score'],
-                    "format_score": st.session_state.post_repair_report['format_score']['score'],
-                    "keyword_score": st.session_state.post_repair_report['keyword_score'],
-                    "semantic_similarity": st.session_state.post_repair_report['semantic_result']['score'],
-                    "risk": st.session_state.post_repair_report['risk'],
-                    "final_score": st.session_state.post_repair_report['final_score']
-                },
-                "repair_applied": st.session_state.repair_applied,
-                "restored_items": st.session_state.prompt_ir["traceability"].get("restored_items", [])
-            }
-            report_json = json.dumps(report, indent=2)
-            st.download_button(
-                label="📥 Download .json",
-                data=report_json,
-                file_name="evaluation_report.json",
-                mime="application/json",
-                use_container_width=True
-            )
+            report = {"timestamp": datetime.now().isoformat(), "metrics": st.session_state.post_repair_report}
+            st.download_button("📥 Download Report (.json)", data=json.dumps(report, indent=2), file_name="report.json", mime="application/json", use_container_width=True)
