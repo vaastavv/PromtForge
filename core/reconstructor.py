@@ -1,32 +1,90 @@
 """
-Prompt Reconstructor with Adaptive Repair
-Builds the final optimized prompt and repairs missing elements.
+Prompt Reconstructor with Adaptive Repair and Mode-Aware Formatting
+Builds the final optimized prompt from Prompt IR sections.
 """
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
-
-def reconstruct_prompt(compressed_sections: Dict[str, str]) -> str:
+def reconstruct_prompt(compressed_sections: Dict[str, str], prompt_ir: Dict) -> Tuple[str, Dict]:
     """
     Reconstructs the final optimized prompt from compressed sections.
+    Applies mode-specific formatting and deduplication.
     """
+    mode = prompt_ir.get("compression_policy", {}).get("mode", "balanced")
     parts = []
-    
+    trace_steps = []
+
+    # Helper to deduplicate lines while preserving order
+    def deduplicate(text: str) -> List[str]:
+        lines = text.split('\n')
+        seen = set()
+        unique = []
+        for line in lines:
+            clean = line.strip().lower()
+            if clean and clean not in seen:
+                seen.add(clean)
+                unique.append(line.strip())
+        return unique
+
+    # Helper to format lists based on mode
+    def format_list(items: List[str], mode: str) -> str:
+        if not items:
+            return ""
+        if mode == "aggressive":
+            # Very compact: inline comma-separated
+            return ", ".join(items)
+        elif mode == "research":
+            # Structured: numbered list for traceability
+            return "\n".join([f"[{i+1}] {item}" for i, item in enumerate(items)])
+        else: 
+            # Safe/Balanced: standard bullet points
+            return "\n".join([f"- {item}" for item in items])
+
+    # 1. Task
     if compressed_sections.get("task"):
-        parts.append("Task:\n" + compressed_sections["task"])
-        
+        task_lines = deduplicate(compressed_sections["task"])
+        task_text = " ".join(task_lines) if mode == "aggressive" else "\n".join(task_lines)
+        parts.append(f"Task:\n{task_text}")
+        trace_steps.append("Reconstructed Task section.")
+
+    # 2. Constraints
     if compressed_sections.get("constraints"):
-        parts.append("Constraints:\n" + compressed_sections["constraints"])
-        
+        c_lines = deduplicate(compressed_sections["constraints"])
+        parts.append(f"Constraints:\n{format_list(c_lines, mode)}")
+        trace_steps.append("Reconstructed Constraints section.")
+
+    # 3. Features
     if compressed_sections.get("features"):
-        parts.append("Required Features:\n" + compressed_sections["features"])
-        
+        f_lines = deduplicate(compressed_sections["features"])
+        parts.append(f"Required Features:\n{format_list(f_lines, mode)}")
+        trace_steps.append("Reconstructed Features section.")
+
+    # 4. Output Requirements
     if compressed_sections.get("output_requirements"):
-        parts.append("Output Requirements:\n" + compressed_sections["output_requirements"])
-        
+        o_lines = deduplicate(compressed_sections["output_requirements"])
+        o_text = " ".join(o_lines) if mode == "aggressive" else "\n".join(o_lines)
+        parts.append(f"Output Requirements:\n{o_text}")
+        trace_steps.append("Reconstructed Output Requirements section.")
+
+    # 5. Context
     if compressed_sections.get("context"):
-        parts.append("Additional Context:\n" + compressed_sections["context"])
+        ctx_lines = deduplicate(compressed_sections["context"])
+        ctx_text = " ".join(ctx_lines) if mode == "aggressive" else "\n".join(ctx_lines)
+        parts.append(f"Additional Context:\n{ctx_text}")
+        trace_steps.append("Reconstructed Context section.")
+
+    # Join all parts
+    final_prompt = "\n\n".join(parts)
+    
+    # Update traceability
+    if "traceability" not in prompt_ir:
+        prompt_ir["traceability"] = {}
+    if "reconstruction_steps" not in prompt_ir["traceability"]:
+        prompt_ir["traceability"]["reconstruction_steps"] = []
         
-    return "\n\n".join(parts)
+    prompt_ir["traceability"]["reconstruction_steps"].extend(trace_steps)
+    prompt_ir["traceability"]["reconstruction_steps"].append("Reconstructed optimized prompt from Prompt IR.")
+
+    return final_prompt, prompt_ir
 
 
 def adaptive_repair(
@@ -38,11 +96,6 @@ def adaptive_repair(
 ) -> tuple:
     """
     Checks if critical elements are missing from the optimized prompt and repairs them.
-    
-    Returns:
-        - repaired_prompt: The fixed prompt
-        - repair_log: List of repairs made
-        - warnings: List of warnings about missing items that couldn't be repaired
     """
     repair_log = []
     warnings = []
@@ -57,8 +110,6 @@ def adaptive_repair(
             words = text.lower().split()
             if not words:
                 continue
-            
-            # Check if constraint is preserved (60% word match)
             match_count = sum(1 for w in words if w in optimized_lower)
             if match_count < max(len(words) * 0.6, 1):
                 repairs_needed.append(("constraint", text))
@@ -70,7 +121,6 @@ def adaptive_repair(
             words = name.lower().split()
             if not words:
                 continue
-            
             match_count = sum(1 for w in words if w in optimized_lower)
             if match_count < max(len(words) * 0.5, 1):
                 repairs_needed.append(("feature", name))
@@ -86,7 +136,6 @@ def adaptive_repair(
     # Apply repairs
     if repairs_needed:
         repaired_prompt = optimized_prompt + "\n\n---\n**Critical Requirements (Restored):**\n"
-        
         for item_type, item_text in repairs_needed:
             if item_type == "constraint":
                 repaired_prompt += f"- [CONSTRAINT] {item_text}\n"
@@ -97,7 +146,6 @@ def adaptive_repair(
             elif item_type == "format":
                 repaired_prompt += f"- [FORMAT] {item_text}\n"
                 repair_log.append(f"Restored missing format requirement: {item_text}")
-        
         return repaired_prompt, repair_log, warnings
     
     return optimized_prompt, repair_log, warnings

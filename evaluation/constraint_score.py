@@ -1,10 +1,11 @@
-def calculate_constraint_preservation(constraints: list, compressed_text: str) -> float:
-    """Fraction of required constraints found in compressed text."""
+def calculate_constraint_preservation(constraints: list, compressed_text: str) -> dict:
+    """Returns score and list of missing constraint texts."""
     if not constraints:
-        return 1.0
+        return {"score": 1.0, "missing_items": []}
     
     text_lower = compressed_text.lower()
     preserved = 0
+    missing = []
     
     for c in constraints:
         text = c.get("text", "")
@@ -12,9 +13,11 @@ def calculate_constraint_preservation(constraints: list, compressed_text: str) -
         if not words:
             continue
             
-        # If 60%+ of the constraint words appear, consider it preserved
         match_count = sum(1 for w in words if w in text_lower)
         if match_count >= max(len(words) * 0.6, 1):
             preserved += 1
+        else:
+            missing.append(text)
             
-    return round(preserved / len(constraints), 4)
+    score = round(preserved / len(constraints), 4)
+    return {"score": score, "missing_items": missing}

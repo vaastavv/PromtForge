@@ -1,7 +1,7 @@
-def calculate_output_format_score(output_req: dict, compressed_text: str) -> float:
-    """Checks if the compressed text preserves format indicators."""
+def calculate_output_format_score(output_req: dict, compressed_text: str) -> dict:
+    """Returns score and missing format indicators."""
     if not output_req or not output_req.get("locked"):
-        return 1.0
+        return {"score": 1.0, "missing_items": []}
         
     format_str = output_req.get("format", "plain_text").lower()
     text_lower = compressed_text.lower()
@@ -16,9 +16,10 @@ def calculate_output_format_score(output_req: dict, compressed_text: str) -> flo
     
     indicators = format_indicators.get(format_str, [format_str])
     if not indicators:
-        return 1.0
+        return {"score": 1.0, "missing_items": []}
         
-    found = sum(1 for ind in indicators if ind.lower() in text_lower)
-    # Need at least 30% of indicators present
-    score = min(found / max(len(indicators) * 0.3, 1), 1.0)
-    return round(score, 4)
+    missing_indicators = [ind for ind in indicators if ind.lower() not in text_lower]
+    found = len(indicators) - len(missing_indicators)
+    
+    score = round(min(found / max(len(indicators) * 0.3, 1), 1.0), 4)
+    return {"score": score, "missing_items": missing_indicators}
